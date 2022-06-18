@@ -1,6 +1,8 @@
+<img src="./perceiver-ar.png" width="300px"></img>
+
 ## Perceiver AR - Pytorch (wip)
 
-Implementation of Perceiver AR, Deepmind's new long-context attention network based on Perceiver architecture, in Pytorch.
+Implementation of <a href="https://arxiv.org/abs/2202.07765">Perceiver AR</a>, Deepmind's new long-context attention network based on Perceiver architecture, in Pytorch.
 
 I am building this out of popular demand, not because I believe in the architecture. As someone else puts it succinctly, this is equivalent to an encoder / decoder transformer architecture where the encoder has 0 layers (and the decoder cross attention is restricted to 1 layer)
 
