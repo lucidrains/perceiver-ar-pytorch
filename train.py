@@ -20,7 +20,8 @@ LEARNING_RATE = 2e-4
 VALIDATE_EVERY = 100
 GENERATE_EVERY = 500
 GENERATE_LENGTH = 512
-SEQ_LEN = 1024
+SEQ_LEN = 4096
+PREFIX_SEQ_LEN = 3072
 
 # helpers
 
@@ -46,7 +47,7 @@ model = PerceiverAR(
     heads = 16,
     dim_head = 32,
     max_seq_len = SEQ_LEN,
-    cross_attn_seq_len = SEQ_LEN // 2
+    cross_attn_seq_len = PREFIX_SEQ_LEN
 )
 
 model = AutoregressiveWrapper(model)
