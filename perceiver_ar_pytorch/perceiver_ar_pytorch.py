@@ -156,7 +156,8 @@ class PerceiverAR(nn.Module):
         dim_head = 64,
         heads = 8,
         dropout = 0.,
-        ff_mult = 4
+        ff_mult = 4,
+        perceive_depth = 1
     ):
         super().__init__()
         assert max_seq_len > cross_attn_seq_len, 'max_seq_len must be greater than cross_attn_seq_len, the length of the sequence for which to cross attend to "perceiver" style'
@@ -168,10 +169,13 @@ class PerceiverAR(nn.Module):
 
         self.rotary_pos_emb = RotaryEmbedding(dim = max(32, dim_head // 2))
 
-        self.perceive_layer = nn.ModuleList([
-            CausalPrefixAttention(dim = dim, dim_head = dim_head, heads = heads, dropout = dropout),
-            FeedForward(dim, mult = ff_mult, dropout = dropout)
-        ])
+        self.perceive_layers  = nn.ModuleList([])
+
+        for _ in range(perceive_depth):
+            self.perceive_layers.append(nn.ModuleList([
+                CausalPrefixAttention(dim = dim, dim_head = dim_head, heads = heads, dropout = dropout),
+                FeedForward(dim, mult = ff_mult, dropout = dropout)
+            ]))
 
         self.layers = nn.ModuleList([])
         for _ in range(depth):
@@ -203,10 +207,9 @@ class PerceiverAR(nn.Module):
 
         # initial perceiver attention and feedforward (one cross attention)
 
-        cross_attn, ff = self.perceive_layer
-
-        x = cross_attn(x, prefix, rotary_pos_emb = rotary_pos_emb) + x
-        x = ff(x) + x
+        for cross_attn, ff in self.perceive_layers:
+            x = cross_attn(x, prefix, rotary_pos_emb = rotary_pos_emb) + x
+            x = ff(x) + x
 
         # layers
 
