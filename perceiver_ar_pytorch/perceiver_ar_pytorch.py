@@ -112,7 +112,7 @@ class CausalPrefixAttention(nn.Module):
         self.to_kv = nn.Linear(dim, inner_dim * 2, bias = False)
         self.to_out = nn.Linear(inner_dim, dim)
 
-    def forward(self, x, context, rotary_pos_emb = None):
+    def forward(self, x, context, context_mask = None, rotary_pos_emb = None):
         x = self.norm(x)
         q = self.to_q(x)
 
@@ -133,9 +133,17 @@ class CausalPrefixAttention(nn.Module):
         sim = einsum('b h i d, b h j d -> b h i j', q, k)
 
         i, j = sim.shape[-2:]
-        causal_mask = torch.ones((i, j), device = x.device, dtype = torch.bool).triu(j - i + 1)
 
-        sim = sim.masked_fill(causal_mask, -torch.finfo(sim.dtype).max)
+        mask_value = -torch.finfo(sim.dtype).max
+
+        if exists(context_mask):
+            mask_len = context_mask.shape[-1]
+            context_mask = F.pad(context_mask, (0, max(j - mask_len, 0)), value = True)
+            context_mask = rearrange(context_mask, 'b j -> b 1 1 j')
+            sim = sim.masked_fill(~context_mask, mask_value)
+
+        causal_mask = torch.ones((i, j), device = x.device, dtype = torch.bool).triu(j - i + 1)
+        sim = sim.masked_fill(causal_mask, mask_value)
 
         attn = sim.softmax(dim = -1)
         out = einsum('b h i j, b h j d -> b h i d', attn, v)
@@ -189,6 +197,7 @@ class PerceiverAR(nn.Module):
     def forward(
         self,
         x,
+        prefix_mask = None,
         labels = None
     ):
         seq_len, device = x.shape[1], x.device
@@ -208,7 +217,7 @@ class PerceiverAR(nn.Module):
         # initial perceiver attention and feedforward (one cross attention)
 
         for cross_attn, ff in self.perceive_layers:
-            x = cross_attn(x, prefix, rotary_pos_emb = rotary_pos_emb) + x
+            x = cross_attn(x, prefix, context_mask = prefix_mask, rotary_pos_emb = rotary_pos_emb) + x
             x = ff(x) + x
 
         # layers
