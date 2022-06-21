@@ -12,6 +12,41 @@ However, the experimental results they provided are still worthwhile and I'll bu
 
 <a href="https://github.com/google-research/perceiver-ar">Official Jax repository</a>
 
+## Install
+
+```bash
+$ pip install perceiver-ar-pytorch
+```
+
+## Usage
+
+```python
+import torch
+from perceiver_ar_pytorch import PerceiverAR
+
+model = PerceiverAR(
+    num_tokens = 20000,             # number of tokens
+    dim = 512,                      # model dimensions
+    depth = 8,                      # model depth
+    dim_head = 64,                  # attention head dimension
+    heads = 8,                      # attention heads
+    max_seq_len = 4096,             # total max sequence length
+    cross_attn_seq_len = 3072,      # the sequence length in which to attend to, but does not undergo self attention (must be less than max_seq_len)
+)
+
+x = torch.randint(0, 20000, (1, 4096))
+
+logits = model(x) # (1, 1024, 20000) - (4096 [seq len] - 3072 [perceived prefix] == 1024)
+```
+
+## Test
+
+Enwik8 at 4096
+
+```bash
+$ python train.py
+```
+
 ## Citations
 
 ```bibtex
