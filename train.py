@@ -21,7 +21,7 @@ VALIDATE_EVERY = 100
 GENERATE_EVERY = 500
 GENERATE_LENGTH = 512
 SEQ_LEN = 4096
-PREFIX_SEQ_LEN = 3072
+PREFIX_SEQ_LEN = 3584
 
 # helpers
 
@@ -44,8 +44,8 @@ model = PerceiverAR(
     num_tokens = 256,
     dim = 512,
     depth = 8,
-    heads = 16,
-    dim_head = 32,
+    heads = 8,
+    dim_head = 64,
     max_seq_len = SEQ_LEN,
     cross_attn_seq_len = PREFIX_SEQ_LEN
 )
