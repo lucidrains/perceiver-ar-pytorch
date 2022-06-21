@@ -66,6 +66,7 @@ class CausalAttention(nn.Module):
         inner_dim = heads * dim_head
 
         self.norm = nn.LayerNorm(dim)
+        self.dropout = nn.Dropout(dropout)
         self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
         self.to_out = nn.Linear(inner_dim, dim, bias = False)
 
@@ -88,6 +89,8 @@ class CausalAttention(nn.Module):
         sim = sim.masked_fill(causal_mask, -torch.finfo(sim.dtype).max)
 
         attn = sim.softmax(dim = -1)
+        attn = self.dropout(attn)
+
         out = einsum('b h i j, b h j d -> b h i d', attn, v)
 
         out = rearrange(out, 'b h n d -> b n (h d)')
@@ -109,6 +112,7 @@ class CausalPrefixAttention(nn.Module):
 
         self.norm = nn.LayerNorm(dim)
         self.context_norm = nn.LayerNorm(dim)
+        self.dropout = nn.Dropout(dropout)
 
         self.to_q = nn.Linear(dim, inner_dim, bias = False)
         self.to_kv = nn.Linear(dim, inner_dim * 2, bias = False)
@@ -150,6 +154,8 @@ class CausalPrefixAttention(nn.Module):
         sim = sim.masked_fill(causal_mask, mask_value)
 
         attn = sim.softmax(dim = -1)
+        attn = self.dropout(attn)
+
         out = einsum('b h i j, b h j d -> b h i d', attn, v)
 
         out = rearrange(out, 'b h n d -> b n (h d)')
