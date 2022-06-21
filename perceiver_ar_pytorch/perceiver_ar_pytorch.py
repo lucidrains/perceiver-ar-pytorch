@@ -108,12 +108,16 @@ class CausalPrefixAttention(nn.Module):
         inner_dim = heads * dim_head
 
         self.norm = nn.LayerNorm(dim)
+        self.context_norm = nn.LayerNorm(dim)
+
         self.to_q = nn.Linear(dim, inner_dim, bias = False)
         self.to_kv = nn.Linear(dim, inner_dim * 2, bias = False)
         self.to_out = nn.Linear(inner_dim, dim)
 
     def forward(self, x, context, context_mask = None, rotary_pos_emb = None):
         x = self.norm(x)
+        context = self.context_norm(context)
+
         q = self.to_q(x)
 
         k_input, v_input = self.to_kv(x).chunk(2, dim = -1)
