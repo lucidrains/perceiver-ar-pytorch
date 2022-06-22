@@ -1,16 +1,18 @@
 <img src="./perceiver-ar.png" width="300px"></img>
 
-## Perceiver AR - Pytorch (wip)
+## Perceiver AR - Pytorch
 
 Implementation of <a href="https://arxiv.org/abs/2202.07765">Perceiver AR</a>, Deepmind's new long-context attention network based on Perceiver architecture, in Pytorch.
 
-<a href="https://storage.googleapis.com/perceiver-ar/index.html">Generated piano samples</a> - I guess we will have infinite <a href="https://en.wikipedia.org/wiki/Muzak">muzak</a> soon.
+<a href="https://storage.googleapis.com/perceiver-ar/index.html">Generated piano samples</a>
 
 I am building this out of popular demand, not because I believe in the architecture. As someone else puts it succinctly, this is equivalent to an encoder / decoder transformer architecture where the encoder has 0 layers (and the decoder cross attention is restricted to 1 layer)
 
 However, the experimental results they provided are still worthwhile and I'll build it out so students and researchers alike can explore along this avenue.
 
 <a href="https://github.com/google-research/perceiver-ar">Official Jax repository</a>
+
+Update: seems to be performing decently well on enwik8 with 4096 context length. maybe I was wrong to be pessimistic
 
 ## Install
 
