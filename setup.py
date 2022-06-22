@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
   name = 'perceiver-ar-pytorch',
   packages = find_packages(exclude=[]),
-  version = '0.0.6',
+  version = '0.0.7',
   license='MIT',
   description = 'Perceiver AR',
   author = 'Phil Wang',

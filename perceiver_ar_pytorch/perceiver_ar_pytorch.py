@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn, einsum
 
-from einops import rearrange
+from einops import rearrange, repeat
 
 # helper functions
 
@@ -104,7 +104,8 @@ class CausalPrefixAttention(nn.Module):
         dim_head = 64,
         heads = 8,
         max_heads_process = 2,
-        dropout = 0.
+        dropout = 0.,
+        cross_attn_dropout = 0.
     ):
         super().__init__()
         self.scale = dim_head ** -0.5
@@ -117,13 +118,46 @@ class CausalPrefixAttention(nn.Module):
         self.context_norm = nn.LayerNorm(dim)
         self.dropout = nn.Dropout(dropout)
 
+        self.cross_attn_dropout = cross_attn_dropout # they drop out a percentage of the prefix during training, shown to help prevent overfitting
+
         self.to_q = nn.Linear(dim, inner_dim, bias = False)
         self.to_kv = nn.Linear(dim, inner_dim * 2, bias = False)
         self.to_out = nn.Linear(inner_dim, dim)
 
     def forward(self, x, context, context_mask = None, rotary_pos_emb = None):
+        batch, context_len, device = x.shape[0], context.shape[-2], x.device
+
+        q_rotary_pos_emb = rotary_pos_emb
+        k_rotary_pos_emb = rotary_pos_emb
+
+        # take care of cross attention dropout
+
+        if self.training and self.cross_attn_dropout > 0.:
+            rand = torch.zeros((batch, context_len), device = device).uniform_()
+            keep_context_len = context_len - int(context_len * self.cross_attn_dropout)
+            keep_indices = rand.topk(keep_context_len, dim = -1).indices
+            keep_mask = torch.zeros_like(rand).scatter_(1, keep_indices, 1).bool()
+
+            context = rearrange(context[keep_mask], '(b n) d -> b n d', b = batch)
+
+            if exists(context_mask):
+                context_mask = rearrange(context_mask[keep_mask], '(b n) -> b n', b = batch)
+
+            # operate on rotary position embeddings for keys
+
+            k_rotary_pos_emb = repeat(k_rotary_pos_emb, '... -> b ...', b = batch)
+            k_rotary_pos_emb_context, k_rotary_pos_emb_seq = k_rotary_pos_emb[:, :context_len], k_rotary_pos_emb[:, context_len:]
+            k_rotary_pos_emb_context = rearrange(k_rotary_pos_emb_context[keep_mask], '(b n) d -> b n d', b = batch)
+
+            k_rotary_pos_emb = torch.cat((k_rotary_pos_emb_context, k_rotary_pos_emb_seq), dim = 1)
+            k_rotary_pos_emb = rearrange(k_rotary_pos_emb, 'b n d -> b 1 n d')
+
+        # normalization
+
         x = self.norm(x)
         context = self.context_norm(context)
+
+        # derive queries, keys, values
 
         q = self.to_q(x)
 
@@ -137,9 +171,11 @@ class CausalPrefixAttention(nn.Module):
 
         q = q * self.scale
 
+        # rotate queries and keys with rotary embeddings
+
         if exists(rotary_pos_emb):
-            q = apply_rotary_pos_emb(rotary_pos_emb, q)
-            k = apply_rotary_pos_emb(rotary_pos_emb, k)
+            q = apply_rotary_pos_emb(q_rotary_pos_emb, q)
+            k = apply_rotary_pos_emb(k_rotary_pos_emb, k)
 
         # take care of masking
 
@@ -195,6 +231,7 @@ class PerceiverAR(nn.Module):
         dim_head = 64,
         heads = 8,
         dropout = 0.,
+        cross_attn_dropout = 0.,
         ff_mult = 4,
         perceive_depth = 1,
         perceive_max_heads_process = 2 # processes the heads in the perceiver layer in chunks to lower peak memory, in the case the prefix is really long
@@ -213,7 +250,7 @@ class PerceiverAR(nn.Module):
 
         for _ in range(perceive_depth):
             self.perceive_layers.append(nn.ModuleList([
-                CausalPrefixAttention(dim = dim, dim_head = dim_head, heads = heads, max_heads_process = perceive_max_heads_process, dropout = dropout),
+                CausalPrefixAttention(dim = dim, dim_head = dim_head, heads = heads, max_heads_process = perceive_max_heads_process, dropout = dropout, cross_attn_dropout = cross_attn_dropout),
                 FeedForward(dim, mult = ff_mult, dropout = dropout)
             ]))
 

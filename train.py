@@ -46,6 +46,7 @@ model = PerceiverAR(
     depth = 8,
     heads = 8,
     dim_head = 64,
+    cross_attn_dropout = 0.5,
     max_seq_len = SEQ_LEN,
     cross_attn_seq_len = PREFIX_SEQ_LEN
 )

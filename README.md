@@ -32,6 +32,7 @@ model = PerceiverAR(
     heads = 8,                      # attention heads
     max_seq_len = 4096,             # total max sequence length
     cross_attn_seq_len = 3072,      # the sequence length in which to attend to, but does not undergo self attention (must be less than max_seq_len)
+    cross_attn_dropout = 0.5,       # what percentage of the prefix to dropout during training, in paper they had extensive experimentation to show up to 50% dropout helped prevent overfitting
 )
 
 x = torch.randint(0, 20000, (1, 4096))
