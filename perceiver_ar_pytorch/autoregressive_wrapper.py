@@ -50,22 +50,21 @@ class AutoregressiveWrapper(nn.Module):
         filter_thres=0.9,
         **kwargs
     ):
-        b, seq_len, device = *start_tokens.shape, start_tokens.device
+        b, n, device = *start_tokens.shape, start_tokens.device
 
-        offset = seq_len
         out = start_tokens
 
         for _ in range(seq_len):
-            out = out[:, -self.max_seq_len:]
-            logits = self.net(out, **kwargs)[:, -1, :]
+            logits = self.net(
+                out[:, -self.max_seq_len:],
+                **kwargs
+            )[:, -1]
 
             filtered_logits = top_k(logits, thres = filter_thres)
             probs = F.softmax(filtered_logits / temperature, dim=-1)
 
             sample = torch.multinomial(probs, 1)
-
             out = torch.cat((out, sample), dim=-1)
-            offset = max(0, offset - 1)
 
             if exists(eos_token):
                 is_eos_token = out == eos_token
@@ -77,7 +76,7 @@ class AutoregressiveWrapper(nn.Module):
                     out = out.masked_fill(mask, self.pad_value)
                     break
 
-        out = out[:, offset:]
+        out = out[:, n:]
         return out
 
     def forward(self, x, **kwargs):
