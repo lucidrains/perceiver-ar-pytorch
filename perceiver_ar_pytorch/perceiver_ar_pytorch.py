@@ -303,6 +303,8 @@ class PerceiverAR(nn.Module):
 
         if not exists(labels):
             return logits
+        
+        #shift the labels to the right to enable generative training:
 
-        labels = labels[:, self.cross_attn_seq_len:]
-        return F.cross_entropy(rearrange(logits, 'b n c -> b c n'), labels, ignore_index = 0)
+        shifted_labels = torch.cat(labels[:, self.cross_attn_seq_len+1:],torch.zeros(labels.shape[0],1).to(device), dim=1)
+        return F.cross_entropy(rearrange(logits, 'b n c -> b c n'), shifted_labels, ignore_index = 0)
